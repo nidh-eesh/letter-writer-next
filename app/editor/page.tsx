@@ -20,8 +20,11 @@ import StarterKit from '@tiptap/starter-kit';
 import UnderlineExtension from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import { cn } from "@/lib/utils";
+import { useState } from 'react';
 
 export default function EditorPage() {
+  const [isNewFile] = useState(true); // This will be determined by the route or props in the future
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -49,14 +52,17 @@ export default function EditorPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Letter Editor</h1>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              <Save className="w-4 h-4 mr-2" />
-              Save Draft
-            </Button>
-            <Button size="sm">
-              <Upload className="w-4 h-4 mr-2" />
-              Save to Drive
-            </Button>
+            {isNewFile ? (
+              <Button variant="outline" size="sm">
+                <Save className="w-4 h-4 mr-2" />
+                Save Draft
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm">
+                <Upload className="w-4 h-4 mr-2" />
+                Save to Drive
+              </Button>
+            )}
           </div>
         </div>
 
@@ -138,7 +144,14 @@ export default function EditorPage() {
         {/* Footer */}
         <div className="flex justify-end gap-2">
           <Button variant="outline">Cancel</Button>
-          <Button>Save & Close</Button>
+          {isNewFile ? (
+            <Button>
+              <Upload className="w-4 h-4 mr-2" />
+              Save to Drive
+            </Button>
+          ) : (
+            <Button>Save & Close</Button>
+          )}
         </div>
       </div>
     </div>
