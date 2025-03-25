@@ -2,8 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { 
   Bold, 
@@ -13,7 +11,9 @@ import {
   AlignCenter, 
   AlignRight,
   Save,
-  Upload
+  Upload,
+  List,
+  ListOrdered
 } from "lucide-react";
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -27,7 +27,23 @@ export default function EditorPage() {
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        bulletList: {
+          HTMLAttributes: {
+            class: 'list-disc pl-4',
+          },
+        },
+        orderedList: {
+          HTMLAttributes: {
+            class: 'list-decimal pl-4',
+          },
+        },
+        listItem: {
+          HTMLAttributes: {
+            class: 'my-1',
+          },
+        },
+      }),
       UnderlineExtension,
       TextAlign.configure({
         types: ['heading', 'paragraph']
@@ -68,18 +84,6 @@ export default function EditorPage() {
 
         {/* Main Editor */}
         <Card className="p-6">
-          {/* Letter Details */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="space-y-2">
-              <Label htmlFor="recipient">Recipient</Label>
-              <Input id="recipient" placeholder="Enter recipient name" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="subject">Subject</Label>
-              <Input id="subject" placeholder="Enter subject" />
-            </div>
-          </div>
-
           {/* Formatting Toolbar */}
           <div className="flex flex-wrap gap-2 mb-4 p-2 border rounded-md">
             <Button 
@@ -105,6 +109,23 @@ export default function EditorPage() {
               className={cn(editor.isActive('underline') && 'bg-accent')}
             >
               <Underline className="w-4 h-4" />
+            </Button>
+            <Separator orientation="vertical" className="h-6" />
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => editor.chain().focus().toggleBulletList().run()}
+              className={cn(editor.isActive('bulletList') && 'bg-accent')}
+            >
+              <List className="w-4 h-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => editor.chain().focus().toggleOrderedList().run()}
+              className={cn(editor.isActive('orderedList') && 'bg-accent')}
+            >
+              <ListOrdered className="w-4 h-4" />
             </Button>
             <Separator orientation="vertical" className="h-6" />
             <Button 
