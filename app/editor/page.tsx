@@ -5,22 +5,43 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
 import { 
   Bold, 
   Italic, 
   Underline, 
-  List, 
-  ListOrdered, 
   AlignLeft, 
   AlignCenter, 
   AlignRight,
   Save,
-  Upload,
-  Download
+  Upload
 } from "lucide-react";
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import UnderlineExtension from '@tiptap/extension-underline';
+import TextAlign from '@tiptap/extension-text-align';
+import { cn } from "@/lib/utils";
 
 export default function EditorPage() {
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      UnderlineExtension,
+      TextAlign.configure({
+        types: ['heading', 'paragraph']
+      }),
+    ],
+    content: '',
+    editorProps: {
+      attributes: {
+        class: 'min-h-[400px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+      },
+    },
+  });
+
+  if (!editor) {
+    return null;
+  }
+
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="flex flex-col gap-6">
@@ -32,13 +53,9 @@ export default function EditorPage() {
               <Save className="w-4 h-4 mr-2" />
               Save Draft
             </Button>
-            <Button variant="outline" size="sm">
+            <Button size="sm">
               <Upload className="w-4 h-4 mr-2" />
               Save to Drive
-            </Button>
-            <Button size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              Export
             </Button>
           </div>
         </div>
@@ -59,40 +76,62 @@ export default function EditorPage() {
 
           {/* Formatting Toolbar */}
           <div className="flex flex-wrap gap-2 mb-4 p-2 border rounded-md">
-            <Button variant="ghost" size="sm">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => editor.chain().focus().toggleBold().run()}
+              className={cn(editor.isActive('bold') && 'bg-accent')}
+            >
               <Bold className="w-4 h-4" />
             </Button>
-            <Button variant="ghost" size="sm">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => editor.chain().focus().toggleItalic().run()}
+              className={cn(editor.isActive('italic') && 'bg-accent')}
+            >
               <Italic className="w-4 h-4" />
             </Button>
-            <Button variant="ghost" size="sm">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => editor.chain().focus().toggleUnderline().run()}
+              className={cn(editor.isActive('underline') && 'bg-accent')}
+            >
               <Underline className="w-4 h-4" />
             </Button>
             <Separator orientation="vertical" className="h-6" />
-            <Button variant="ghost" size="sm">
-              <List className="w-4 h-4" />
-            </Button>
-            <Button variant="ghost" size="sm">
-              <ListOrdered className="w-4 h-4" />
-            </Button>
-            <Separator orientation="vertical" className="h-6" />
-            <Button variant="ghost" size="sm">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => editor.chain().focus().setTextAlign('left').run()}
+              className={cn(editor.isActive({ textAlign: 'left' }) && 'bg-accent')}
+            >
               <AlignLeft className="w-4 h-4" />
             </Button>
-            <Button variant="ghost" size="sm">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => editor.chain().focus().setTextAlign('center').run()}
+              className={cn(editor.isActive({ textAlign: 'center' }) && 'bg-accent')}
+            >
               <AlignCenter className="w-4 h-4" />
             </Button>
-            <Button variant="ghost" size="sm">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => editor.chain().focus().setTextAlign('right').run()}
+              className={cn(editor.isActive({ textAlign: 'right' }) && 'bg-accent')}
+            >
               <AlignRight className="w-4 h-4" />
             </Button>
           </div>
 
           {/* Editor Area */}
           <div className="space-y-4">
-            <Textarea
-              className="min-h-[400px] resize-none font-serif text-lg"
-              placeholder="Start writing your letter..."
-            />
+            <div className="min-h-[400px] p-4 border rounded-md">
+              <EditorContent editor={editor} className="prose prose-sm max-w-none" />
+            </div>
           </div>
         </Card>
 
