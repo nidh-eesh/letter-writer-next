@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { Input } from '@/components/ui/input'
 import { 
   Bold, 
   Italic, 
@@ -31,6 +32,8 @@ export default function EditorPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [draft, setDraft] = useState<Draft | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isTitleEditing, setIsTitleEditing] = useState(false)
+  const [title, setTitle] = useState('')
 
   useEffect(() => {
     // TODO: Fetch draft from your backend
@@ -44,6 +47,7 @@ export default function EditorPage({ params }: { params: { id: string } }) {
       userId: user?.uid || '',
     }
     setDraft(mockDraft)
+    setTitle(mockDraft.title)
     setLoading(false)
   }, [params.id, user?.uid])
 
@@ -99,6 +103,7 @@ export default function EditorPage({ params }: { params: { id: string } }) {
     // TODO: Implement save functionality
     console.log('Save draft:', {
       id: draft.id,
+      title: title,
       content: editor.getHTML(),
     })
   }
@@ -107,8 +112,19 @@ export default function EditorPage({ params }: { params: { id: string } }) {
     // TODO: Implement Google Drive save functionality
     console.log('Save to Drive:', {
       id: draft.id,
+      title: title,
       content: editor.getHTML(),
     })
+  }
+
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTitle(e.target.value)
+  }
+
+  const handleTitleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsTitleEditing(false)
+    // TODO: Update draft title in backend
   }
 
   return (
@@ -124,7 +140,35 @@ export default function EditorPage({ params }: { params: { id: string } }) {
             >
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            <h1 className="text-3xl font-bold">{draft.title}</h1>
+            {isTitleEditing ? (
+              <form onSubmit={handleTitleSubmit} className="flex items-center gap-2">
+                <Input
+                  value={title}
+                  onChange={handleTitleChange}
+                  className="h-9 w-[300px]"
+                  autoFocus
+                />
+                <Button type="submit" size="sm">Save</Button>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    setIsTitleEditing(false)
+                    setTitle(draft.title)
+                  }}
+                >
+                  Cancel
+                </Button>
+              </form>
+            ) : (
+              <h1 
+                className="text-3xl font-bold cursor-pointer hover:opacity-80"
+                onClick={() => setIsTitleEditing(true)}
+              >
+                {title}
+              </h1>
+            )}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleSave}>
