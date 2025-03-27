@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -9,7 +8,6 @@ import { Card } from '@/components/ui/card';
 export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
   const { login } = useAuth();
 
   const handleGoogleSignIn = async () => {
@@ -18,7 +16,6 @@ export default function LoginPage() {
 
     try {
       await login();
-      router.push('/editor');
     } catch (error: unknown) {
       console.error('Google sign in error:', error);
       setError('Failed to sign in with Google. Please try again.');
