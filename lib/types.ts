@@ -2,8 +2,8 @@ export interface Draft {
   id: string
   title: string
   content: string
-  createdAt: string
-  updatedAt: string
-  userId: string
-  driveFileId?: string
+  created_at: string
+  updated_at: string
+  user_id: string
+  drive_file_id?: string
 } 
