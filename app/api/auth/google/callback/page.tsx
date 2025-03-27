@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function GoogleCallback() {
+function GoogleCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -39,5 +39,20 @@ export default function GoogleCallback() {
         <p className="text-muted-foreground">Please wait while we complete the process.</p>
       </div>
     </div>
+  )
+}
+
+export default function GoogleCallback() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto py-8 px-4">
+        <div className="flex flex-col items-center justify-center gap-4">
+          <h1 className="text-2xl font-bold">Loading...</h1>
+          <p className="text-muted-foreground">Please wait while we complete the process.</p>
+        </div>
+      </div>
+    }>
+      <GoogleCallbackContent />
+    </Suspense>
   )
 } 
