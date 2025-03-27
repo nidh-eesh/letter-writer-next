@@ -8,9 +8,6 @@ const oauth2Client = new google.auth.OAuth2(
   `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/google/callback`
 )
 
-// Initialize the Google Drive API client with the OAuth2 client
-const drive = google.drive({ version: 'v3', auth: oauth2Client })
-
 async function refreshTokenIfNeeded(accessToken: string, refreshToken: string) {
   try {
     // Set the credentials
@@ -33,7 +30,10 @@ async function refreshTokenIfNeeded(accessToken: string, refreshToken: string) {
 async function getOrCreateLettersFolder(accessToken: string, refreshToken: string) {
   try {
     // Refresh token if needed
-    const newAccessToken = await refreshTokenIfNeeded(accessToken, refreshToken)
+    await refreshTokenIfNeeded(accessToken, refreshToken)
+
+    // Initialize the Drive client with current credentials
+    const drive = google.drive({ version: 'v3', auth: oauth2Client })
 
     // Search for the Letters folder
     const response = await drive.files.list({
@@ -69,7 +69,10 @@ async function getOrCreateLettersFolder(accessToken: string, refreshToken: strin
 export async function saveToDrive(accessToken: string, refreshToken: string, file: { title: string, content: string }) {
   try {
     // Refresh token if needed
-    const newAccessToken = await refreshTokenIfNeeded(accessToken, refreshToken)
+    await refreshTokenIfNeeded(accessToken, refreshToken)
+
+    // Initialize the Drive client with current credentials
+    const drive = google.drive({ version: 'v3', auth: oauth2Client })
 
     // Get or create the Letters folder
     const folderId = await getOrCreateLettersFolder(accessToken, refreshToken)
@@ -101,7 +104,10 @@ export async function saveToDrive(accessToken: string, refreshToken: string, fil
 export async function checkFileExists(accessToken: string, refreshToken: string, fileId: string) {
   try {
     // Refresh token if needed
-    const newAccessToken = await refreshTokenIfNeeded(accessToken, refreshToken)
+    await refreshTokenIfNeeded(accessToken, refreshToken)
+
+    // Initialize the Drive client with current credentials
+    const drive = google.drive({ version: 'v3', auth: oauth2Client })
 
     // Try to get the file
     const response = await drive.files.get({
@@ -112,7 +118,7 @@ export async function checkFileExists(accessToken: string, refreshToken: string,
     return !!response.data
   } catch (error) {
     // If we get a 404 error, the file doesn't exist
-    if ((error as any).code === 404) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 404) {
       return false
     }
     throw error
