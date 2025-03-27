@@ -16,7 +16,8 @@ import {
   Upload,
   List,
   ListOrdered,
-  ArrowLeft
+  ArrowLeft,
+  Trash2
 } from "lucide-react"
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -26,8 +27,18 @@ import { cn } from "@/lib/utils"
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Draft } from '@/lib/types'
-import { getDraft, updateDraft, createDraft } from '@/lib/supabase'
+import { getDraft, updateDraft, createDraft, deleteDraft } from '@/lib/supabase'
 import { use } from 'react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export default function EditorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -38,6 +49,9 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
   const [isTitleEditing, setIsTitleEditing] = useState(false)
   const [title, setTitle] = useState('')
   const [saving, setSaving] = useState(false)
+  const [savingToDrive, setSavingToDrive] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleteFromDrive, setDeleteFromDrive] = useState(false)
 
   useEffect(() => {
     async function fetchDraft() {
@@ -60,11 +74,43 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
           const fetchedDraft = await getDraft(id)
           setDraft(fetchedDraft)
           setTitle(fetchedDraft.title)
+
+          // Check Google Drive file status in the background
+          if (fetchedDraft.drive_file_id) {
+            checkDriveFileStatus(fetchedDraft)
+          }
         }
       } catch (error) {
         console.error('Error fetching draft:', error)
       } finally {
         setLoading(false)
+      }
+    }
+
+    async function checkDriveFileStatus(fetchedDraft: Draft) {
+      try {
+        const response = await fetch('/api/drive/check', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fileId: fetchedDraft.drive_file_id,
+          }),
+        })
+
+        if (response.ok) {
+          const { exists } = await response.json()
+          if (!exists) {
+            // If the file doesn't exist in Drive, remove the drive_file_id
+            const updatedDraft = await updateDraft(fetchedDraft.id, {
+              drive_file_id: undefined,
+            })
+            setDraft(updatedDraft)
+          }
+        }
+      } catch (error) {
+        console.error('Error checking Google Drive file:', error)
       }
     }
 
@@ -101,6 +147,7 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
         class: 'min-h-[400px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
       },
     },
+    immediatelyRender: false,
   })
 
   // Update editor content when draft changes
@@ -137,7 +184,6 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
           content: editor.getHTML(),
           user_id: user.uid,
         })
-        console.log('New draft created:', newDraft)
         setDraft(newDraft)
       } else {
         // Update existing draft
@@ -156,7 +202,49 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
   }
 
   const handleSaveToDrive = async () => {
+    setSavingToDrive(true)
     try {
+      let currentDraft = draft
+      // If this is a new draft, save it to Supabase first
+      if (!currentDraft.id && user?.uid) {
+        const newDraft = await createDraft({
+          title,
+          content: editor.getHTML(),
+          user_id: user.uid,
+        })
+        currentDraft = newDraft
+        setDraft(newDraft)
+      }
+
+      // If this is an existing draft with a drive_file_id, check if it still exists
+      if (currentDraft.drive_file_id) {
+        try {
+          const response = await fetch('/api/drive/check', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              fileId: currentDraft.drive_file_id,
+            }),
+          })
+          
+          if (response.ok) {
+            const { exists } = await response.json()
+            if (!exists) {
+              // If the file doesn't exist in Drive, remove the drive_file_id
+              const updatedDraft = await updateDraft(currentDraft.id, {
+                drive_file_id: undefined,
+              })
+              currentDraft = updatedDraft
+              setDraft(updatedDraft)
+            }
+          }
+        } catch (error) {
+          console.error('Error checking Google Drive file:', error)
+        }
+      }
+
       // First, check if we have Google access token
       const response = await fetch('/api/drive/save', {
         method: 'POST',
@@ -177,7 +265,8 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
             `&redirect_uri=${encodeURIComponent(`${process.env.NEXT_PUBLIC_APP_URL}/api/auth/google/callback`)}` +
             `&response_type=code` +
             `&scope=${encodeURIComponent('https://www.googleapis.com/auth/drive.file')}` +
-            `&access_type=offline`
+            `&access_type=offline` +
+            `&prompt=consent`
           
           window.location.href = googleAuthUrl
           return
@@ -187,10 +276,24 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
 
       const file = await response.json()
       console.log('File saved to Google Drive:', file)
-      // You could show a success toast here
+
+      // Update the draft with the Google Drive file ID
+      if (currentDraft.id) {
+        const updatedDraft = await updateDraft(currentDraft.id, {
+          drive_file_id: file.id,
+        })
+        setDraft(updatedDraft)
+      }
+
+      // Only redirect to dashboard for new files (check original draft.id)
+      if (!draft.id) {
+        router.push('/dashboard')
+      }
     } catch (error) {
       console.error('Error saving to Google Drive:', error)
       // You could show an error toast here
+    } finally {
+      setSavingToDrive(false)
     }
   }
 
@@ -214,6 +317,37 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
       setIsTitleEditing(false)
     } catch (error) {
       console.error('Error updating title:', error)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!draft?.id) return
+
+    try {
+      if (deleteFromDrive && draft.drive_file_id) {
+        // Delete from Google Drive
+        const response = await fetch('/api/drive/delete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fileId: draft.drive_file_id,
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to delete from Google Drive')
+        }
+      }
+
+      // Delete from Supabase
+      await deleteDraft(draft.id)
+      router.push('/dashboard')
+    } catch (error) {
+      console.error('Error deleting draft:', error)
+    } finally {
+      setShowDeleteDialog(false)
     }
   }
 
@@ -261,7 +395,7 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
             )}
           </div>
           <div className="flex gap-2">
-          {!draft.id && (
+            {!draft.id && (
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -272,10 +406,26 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
                 {saving ? 'Saving...' : 'Save Draft'}
               </Button>
             )}
-            <Button size="sm" onClick={handleSaveToDrive}>
-              <Upload className="w-4 h-4 mr-2" />
-              Save to Drive
-            </Button>
+            {!draft.drive_file_id && (
+              <Button 
+                size="sm" 
+                onClick={handleSaveToDrive}
+                disabled={savingToDrive}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                {savingToDrive ? 'Saving to Drive...' : 'Save to Drive'}
+              </Button>
+            )}
+            {id !== 'new' && (
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </Button>
+            )}
           </div>
         </div>
 
@@ -356,7 +506,7 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
         </Card>
 
         {/* Footer - Only show for existing drafts */}
-        {draft.id && (
+        {draft.id && !savingToDrive && (
           <div className="flex justify-end gap-2">
             <Button 
               variant="outline" 
@@ -372,6 +522,39 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
             </Button>
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Draft</AlertDialogTitle>
+              <AlertDialogDescription>
+                {draft?.drive_file_id ? (
+                  <span className="block space-y-4">
+                    <span className="block">This draft is saved in Google Drive. Would you like to:</span>
+                    <span className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="deleteFromDrive"
+                        checked={deleteFromDrive}
+                        onChange={(e) => setDeleteFromDrive(e.target.checked)}
+                      />
+                      <label htmlFor="deleteFromDrive">
+                        Delete from Google Drive as well
+                      </label>
+                    </span>
+                  </span>
+                ) : (
+                  <span className="block">Are you sure you want to delete this draft?</span>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   )

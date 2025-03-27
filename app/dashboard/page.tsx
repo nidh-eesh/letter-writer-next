@@ -9,12 +9,25 @@ import { useState, useEffect } from 'react'
 import type { Draft } from '@/lib/types'
 import { getDraftsByUserId, deleteDraft } from '@/lib/supabase'
 import DOMPurify from 'dompurify'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export default function DashboardPage() {
   const { user, loading: authLoading, logout } = useAuth()
   const router = useRouter()
   const [drafts, setDrafts] = useState<Draft[]>([])
   const [loading, setLoading] = useState(true)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleteFromDrive, setDeleteFromDrive] = useState(false)
+  const [draftToDelete, setDraftToDelete] = useState<Draft | null>(null)
 
   // Handle authentication redirect
   useEffect(() => {
@@ -49,12 +62,41 @@ export default function DashboardPage() {
     router.push(`/editor/${draftId}`)
   }
 
-  const handleDeleteDraft = async (draftId: string) => {
+  const handleDeleteDraft = async (draft: Draft) => {
+    setDraftToDelete(draft)
+    setShowDeleteDialog(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!draftToDelete?.id) return
+
     try {
-      await deleteDraft(draftId)
-      setDrafts(drafts.filter(draft => draft.id !== draftId))
+      if (deleteFromDrive && draftToDelete.drive_file_id) {
+        // Delete from Google Drive
+        const response = await fetch('/api/drive/delete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fileId: draftToDelete.drive_file_id,
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to delete from Google Drive')
+        }
+      }
+
+      // Delete from Supabase
+      await deleteDraft(draftToDelete.id)
+      setDrafts(drafts.filter(d => d.id !== draftToDelete.id))
     } catch (error) {
       console.error('Error deleting draft:', error)
+    } finally {
+      setShowDeleteDialog(false)
+      setDraftToDelete(null)
+      setDeleteFromDrive(false)
     }
   }
 
@@ -152,7 +194,7 @@ export default function DashboardPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDeleteDraft(draft.id)}
+                        onClick={() => handleDeleteDraft(draft)}
                         className="text-destructive hover:text-destructive"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -172,6 +214,39 @@ export default function DashboardPage() {
             </div>
           )}
         </section>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Draft</AlertDialogTitle>
+              <AlertDialogDescription>
+                {draftToDelete?.drive_file_id ? (
+                  <span className="block space-y-4">
+                    <span className="block">This draft is saved in Google Drive. Would you like to:</span>
+                    <span className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="deleteFromDrive"
+                        checked={deleteFromDrive}
+                        onChange={(e) => setDeleteFromDrive(e.target.checked)}
+                      />
+                      <label htmlFor="deleteFromDrive">
+                        Delete from Google Drive as well
+                      </label>
+                    </span>
+                  </span>
+                ) : (
+                  <span className="block">Are you sure you want to delete this draft?</span>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   )
