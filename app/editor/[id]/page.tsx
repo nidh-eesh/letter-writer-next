@@ -156,12 +156,42 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
   }
 
   const handleSaveToDrive = async () => {
-    // TODO: Implement Google Drive save functionality
-    console.log('Save to Drive:', {
-      id: draft.id,
-      title: title,
-      content: editor.getHTML(),
-    })
+    try {
+      // First, check if we have Google access token
+      const response = await fetch('/api/drive/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          content: editor.getHTML(),
+        }),
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Not authenticated with Google, redirect to Google OAuth
+          const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+            `client_id=${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}` +
+            `&redirect_uri=${encodeURIComponent(`${process.env.NEXT_PUBLIC_APP_URL}/api/auth/google/callback`)}` +
+            `&response_type=code` +
+            `&scope=${encodeURIComponent('https://www.googleapis.com/auth/drive.file')}` +
+            `&access_type=offline`
+          
+          window.location.href = googleAuthUrl
+          return
+        }
+        throw new Error('Failed to save to Google Drive')
+      }
+
+      const file = await response.json()
+      console.log('File saved to Google Drive:', file)
+      // You could show a success toast here
+    } catch (error) {
+      console.error('Error saving to Google Drive:', error)
+      // You could show an error toast here
+    }
   }
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
