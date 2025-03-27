@@ -7,6 +7,8 @@ import { Plus, FileText, Clock, Trash2, Edit2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import type { Draft } from '@/lib/types'
+import { getDraftsByUserId, deleteDraft } from '@/lib/supabase'
+import DOMPurify from 'dompurify'
 
 export default function DashboardPage() {
   const { user, loading: authLoading, logout } = useAuth()
@@ -21,33 +23,26 @@ export default function DashboardPage() {
     }
   }, [authLoading, user, router])
 
+  // Fetch drafts
   useEffect(() => {
-    // TODO: Fetch drafts from your backend
-    // For now, we'll use mock data
-    const mockDrafts: Draft[] = [
-      {
-        id: '1',
-        title: 'Welcome Letter',
-        content: 'Dear valued customer...',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        userId: user?.uid || '',
-      },
-      {
-        id: '2',
-        title: 'Meeting Notes',
-        content: 'Key points from the team meeting...',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        userId: user?.uid || '',
-      },
-    ]
-    setDrafts(mockDrafts)
-    setLoading(false)
+    async function fetchDrafts() {
+      if (!user?.uid) return
+      
+      try {
+        const fetchedDrafts = await getDraftsByUserId(user.uid)
+        setDrafts(fetchedDrafts)
+      } catch (error) {
+        console.error('Error fetching drafts:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDrafts()
   }, [user?.uid])
 
   const handleNewLetter = () => {
-    router.push('/editor')
+    router.push('/editor/new')
   }
 
   const handleEditDraft = (draftId: string) => {
@@ -55,8 +50,12 @@ export default function DashboardPage() {
   }
 
   const handleDeleteDraft = async (draftId: string) => {
-    // TODO: Implement delete functionality
-    console.log('Delete draft:', draftId)
+    try {
+      await deleteDraft(draftId)
+      setDrafts(drafts.filter(draft => draft.id !== draftId))
+    } catch (error) {
+      console.error('Error deleting draft:', error)
+    }
   }
 
   const formatDate = (dateString: string) => {
@@ -160,12 +159,13 @@ export default function DashboardPage() {
                       </Button>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                    {draft.content}
-                  </p>
+                  <div 
+                    className="text-sm text-muted-foreground line-clamp-2 mb-4 prose prose-sm dark:prose-invert max-w-none"
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(draft.content) }}
+                  />
                   <div className="flex items-center text-xs text-muted-foreground">
                     <Clock className="w-4 h-4 mr-1" />
-                    <span>Last updated {formatDate(draft.updatedAt)}</span>
+                    <span>Last updated {formatDate(draft.updated_at)}</span>
                   </div>
                 </Card>
               ))}

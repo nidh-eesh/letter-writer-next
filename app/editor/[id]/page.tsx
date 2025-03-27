@@ -26,30 +26,50 @@ import { cn } from "@/lib/utils"
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Draft } from '@/lib/types'
+import { getDraft, updateDraft, createDraft } from '@/lib/supabase'
+import { use } from 'react'
 
-export default function EditorPage({ params }: { params: { id: string } }) {
+export default function EditorPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const { user } = useAuth()
   const router = useRouter()
   const [draft, setDraft] = useState<Draft | null>(null)
   const [loading, setLoading] = useState(true)
   const [isTitleEditing, setIsTitleEditing] = useState(false)
   const [title, setTitle] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    // TODO: Fetch draft from your backend
-    // For now, we'll use mock data
-    const mockDraft: Draft = {
-      id: params.id,
-      title: 'Welcome Letter',
-      content: 'Dear valued customer...',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      userId: user?.uid || '',
+    async function fetchDraft() {
+      if (!user?.uid) return
+
+      try {
+        if (id === 'new') {
+          // For new drafts, just set up the initial state
+          setDraft({
+            id: '',
+            title: 'Untitled',
+            content: '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            user_id: user.uid,
+          })
+          setTitle('Untitled')
+        } else {
+          // Only fetch from Supabase if editing an existing draft
+          const fetchedDraft = await getDraft(id)
+          setDraft(fetchedDraft)
+          setTitle(fetchedDraft.title)
+        }
+      } catch (error) {
+        console.error('Error fetching draft:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-    setDraft(mockDraft)
-    setTitle(mockDraft.title)
-    setLoading(false)
-  }, [params.id, user?.uid])
+
+    fetchDraft()
+  }, [id, user?.uid])
 
   const editor = useEditor({
     extensions: [
@@ -83,6 +103,13 @@ export default function EditorPage({ params }: { params: { id: string } }) {
     },
   })
 
+  // Update editor content when draft changes
+  useEffect(() => {
+    if (editor && draft?.content) {
+      editor.commands.setContent(draft.content)
+    }
+  }, [editor, draft?.content])
+
   if (loading) {
     return (
       <div className="container mx-auto py-8 px-4">
@@ -100,12 +127,32 @@ export default function EditorPage({ params }: { params: { id: string } }) {
   }
 
   const handleSave = async () => {
-    // TODO: Implement save functionality
-    console.log('Save draft:', {
-      id: draft.id,
-      title: title,
-      content: editor.getHTML(),
-    })
+    if (!user?.uid) return
+
+    setSaving(true)
+    try {
+      if (!draft.id) {
+        const newDraft = await createDraft({
+          title,
+          content: editor.getHTML(),
+          user_id: user.uid,
+        })
+        console.log('New draft created:', newDraft)
+        setDraft(newDraft)
+      } else {
+        // Update existing draft
+        const updatedDraft = await updateDraft(draft.id, {
+          title,
+          content: editor.getHTML(),
+        })
+        setDraft(updatedDraft)
+      }
+      router.push('/dashboard')
+    } catch (error) {
+      console.error('Error saving draft:', error)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleSaveToDrive = async () => {
@@ -121,10 +168,23 @@ export default function EditorPage({ params }: { params: { id: string } }) {
     setTitle(e.target.value)
   }
 
-  const handleTitleSubmit = (e: React.FormEvent) => {
+  const handleTitleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsTitleEditing(false)
-    // TODO: Update draft title in backend
+    
+    if (!draft.id) {
+      // For new drafts, just update the local state
+      setDraft(prev => prev ? { ...prev, title } : null)
+      setIsTitleEditing(false)
+      return
+    }
+
+    try {
+      const updatedDraft = await updateDraft(draft.id, { title })
+      setDraft(updatedDraft)
+      setIsTitleEditing(false)
+    } catch (error) {
+      console.error('Error updating title:', error)
+    }
   }
 
   return (
@@ -171,10 +231,17 @@ export default function EditorPage({ params }: { params: { id: string } }) {
             )}
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleSave}>
-              <Save className="w-4 h-4 mr-2" />
-              Save Draft
-            </Button>
+          {!draft.id && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleSave}
+                disabled={saving}
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {saving ? 'Saving...' : 'Save Draft'}
+              </Button>
+            )}
             <Button size="sm" onClick={handleSaveToDrive}>
               <Upload className="w-4 h-4 mr-2" />
               Save to Drive
@@ -257,6 +324,24 @@ export default function EditorPage({ params }: { params: { id: string } }) {
           {/* Editor Content */}
           <EditorContent editor={editor} />
         </Card>
+
+        {/* Footer - Only show for existing drafts */}
+        {draft.id && (
+          <div className="flex justify-end gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => router.push('/dashboard')}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save & Close'}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )
