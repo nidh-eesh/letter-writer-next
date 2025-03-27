@@ -5,15 +5,16 @@ export async function POST(request: NextRequest) {
   try {
     const { title, content } = await request.json()
     const accessToken = request.cookies.get('google_access_token')?.value
+    const refreshToken = request.cookies.get('google_refresh_token')?.value
 
-    if (!accessToken) {
+    if (!accessToken || !refreshToken) {
       return NextResponse.json(
         { error: 'Not authenticated with Google' },
         { status: 401 }
       )
     }
 
-    const file = await saveToDrive(accessToken, { title, content })
+    const file = await saveToDrive(accessToken, refreshToken, { title, content })
     return NextResponse.json(file)
   } catch (error) {
     console.error('Error saving to Google Drive:', error)
