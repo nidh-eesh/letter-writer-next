@@ -31,11 +31,12 @@ export async function createDraft(draft: {
 }
 
 export async function updateDraft(id: string, updates: Partial<Draft>) {
-  const { data, error } = await supabase
+   const { data, error } = await supabase
     .from('drafts')
     .update({
       title: updates.title,
       content: updates.content,
+      drive_file_id: updates.drive_file_id === undefined ? null : updates.drive_file_id,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
