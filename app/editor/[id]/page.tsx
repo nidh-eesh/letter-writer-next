@@ -1,4 +1,4 @@
-"use client";
+'use client'
 
 import { useAuth } from '@/lib/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -22,13 +22,30 @@ import StarterKit from '@tiptap/starter-kit'
 import UnderlineExtension from '@tiptap/extension-underline'
 import TextAlign from '@tiptap/extension-text-align'
 import { cn } from "@/lib/utils"
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import type { Draft } from '@/lib/types'
 
-export default function NewEditorPage() {
+export default function EditorPage({ params }: { params: { id: string } }) {
   const { user } = useAuth()
   const router = useRouter()
-  const [title, setTitle] = useState('Untitled')
+  const [draft, setDraft] = useState<Draft | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // TODO: Fetch draft from your backend
+    // For now, we'll use mock data
+    const mockDraft: Draft = {
+      id: params.id,
+      title: 'Welcome Letter',
+      content: 'Dear valued customer...',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      userId: user?.uid || '',
+    }
+    setDraft(mockDraft)
+    setLoading(false)
+  }, [params.id, user?.uid])
 
   const editor = useEditor({
     extensions: [
@@ -54,7 +71,7 @@ export default function NewEditorPage() {
         types: ['heading', 'paragraph']
       }),
     ],
-    content: '',
+    content: draft?.content || '',
     editorProps: {
       attributes: {
         class: 'min-h-[400px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
@@ -62,25 +79,35 @@ export default function NewEditorPage() {
     },
   })
 
-  if (!editor) {
+  if (loading) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-muted rounded w-1/4" />
+          <div className="h-4 bg-muted rounded w-1/2" />
+          <div className="h-[400px] bg-muted rounded" />
+        </div>
+      </div>
+    )
+  }
+
+  if (!editor || !draft) {
     return null
   }
 
   const handleSave = async () => {
     // TODO: Implement save functionality
-    console.log('Save new draft:', {
-      title,
+    console.log('Save draft:', {
+      id: draft.id,
       content: editor.getHTML(),
-      userId: user?.uid,
     })
   }
 
   const handleSaveToDrive = async () => {
     // TODO: Implement Google Drive save functionality
-    console.log('Save new draft to Drive:', {
-      title,
+    console.log('Save to Drive:', {
+      id: draft.id,
       content: editor.getHTML(),
-      userId: user?.uid,
     })
   }
 
@@ -97,13 +124,7 @@ export default function NewEditorPage() {
             >
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="text-3xl font-bold bg-transparent border-none focus:outline-none focus:ring-0 p-0"
-              placeholder="Untitled"
-            />
+            <h1 className="text-3xl font-bold">{draft.title}</h1>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleSave}>
@@ -195,4 +216,4 @@ export default function NewEditorPage() {
       </div>
     </div>
   )
-}
+} 
