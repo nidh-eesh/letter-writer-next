@@ -4,14 +4,21 @@ import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/AuthContext'
 import { useRouter } from 'next/navigation'
 import { FileText, ArrowRight, Shield, Zap, Share2 } from 'lucide-react'
+import { useEffect } from 'react'
 
 export default function Home() {
   const { user } = useAuth()
   const router = useRouter()
 
-  // If user is already logged in, redirect to dashboard
+  useEffect(() => {
+    // If user is already logged in, redirect to dashboard
+    if (user) {
+      router.push('/dashboard')
+    }
+  }, [user, router])
+
+  // Don't render anything while redirecting
   if (user) {
-    router.push('/dashboard')
     return null
   }
 
@@ -40,23 +47,23 @@ export default function Home() {
       <section className="py-16 bg-muted/50">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-6 rounded-lg bg-background shadow-sm">
-              <Shield className="w-8 h-8 mb-4 text-primary" />
-              <h3 className="text-lg font-semibold mb-2">Secure Authentication</h3>
+            <div className="flex flex-col items-center text-center gap-4">
+              <Shield className="w-12 h-12 text-primary" />
+              <h3 className="text-xl font-semibold">Secure & Private</h3>
               <p className="text-muted-foreground">
-                Quick and secure authentication using your Google account.
+                Your letters are stored securely and only you can access them.
               </p>
             </div>
-            <div className="p-6 rounded-lg bg-background shadow-sm">
-              <Zap className="w-8 h-8 mb-4 text-primary" />
-              <h3 className="text-lg font-semibold mb-2">Simple Editor</h3>
+            <div className="flex flex-col items-center text-center gap-4">
+              <Zap className="w-12 h-12 text-primary" />
+              <h3 className="text-xl font-semibold">Fast & Easy</h3>
               <p className="text-muted-foreground">
-                Clean and distraction-free writing experience.
+                Write and save letters quickly with our intuitive interface.
               </p>
             </div>
-            <div className="p-6 rounded-lg bg-background shadow-sm">
-              <Share2 className="w-8 h-8 mb-4 text-primary" />
-              <h3 className="text-lg font-semibold mb-2">Google Drive Integration</h3>
+            <div className="flex flex-col items-center text-center gap-4">
+              <Share2 className="w-12 h-12 text-primary" />
+              <h3 className="text-xl font-semibold">Google Drive Integration</h3>
               <p className="text-muted-foreground">
                 Save your letters directly to Google Drive for easy access.
               </p>
