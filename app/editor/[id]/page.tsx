@@ -157,56 +157,40 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
     }
   }, [editor, draft?.content])
 
-  if (loading) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-muted rounded w-1/4" />
-          <div className="h-4 bg-muted rounded w-1/2" />
-          <div className="h-[400px] bg-muted rounded" />
-        </div>
-      </div>
-    )
-  }
-
-  if (!editor || !draft) {
-    return null
-  }
-
-  const handleSave = async () => {
-    if (!user?.uid) return
-
-    setSaving(true)
-    try {
-      if (!draft.id) {
-        const newDraft = await createDraft({
-          title,
-          content: editor.getHTML(),
-          user_id: user.uid,
-        })
-        setDraft(newDraft)
-      } else {
-        // Update existing draft
-        const updatedDraft = await updateDraft(draft.id, {
-          title,
-          content: editor.getHTML(),
-        })
-        setDraft(updatedDraft)
+  // Add effect to handle pending saves after authentication
+  useEffect(() => {
+    const pendingSave = localStorage.getItem('pendingDriveSave')
+    if (pendingSave && editor && draft) {
+      try {
+        const saveState = JSON.parse(pendingSave)
+        // Clear the pending save immediately to prevent duplicate saves
+        localStorage.removeItem('pendingDriveSave')
+        // Retry the save operation
+        handleSaveToDrive()
+      } catch (error) {
+        console.error('Error processing pending save:', error)
       }
-      router.push('/dashboard')
-    } catch (error) {
-      console.error('Error saving draft:', error)
-    } finally {
-      setSaving(false)
     }
-  }
+  }, [editor, draft])
+
+  // Add effect to handle automatic save after authentication
+  useEffect(() => {
+    const shouldAutoSave = sessionStorage.getItem('shouldAutoSaveToDrive')
+    if (shouldAutoSave && editor && draft) {
+      // Clear the flag immediately to prevent duplicate saves
+      sessionStorage.removeItem('shouldAutoSaveToDrive')
+      // Trigger the save operation
+      handleSaveToDrive()
+    }
+  }, [editor, draft])
 
   const handleSaveToDrive = async () => {
+    if (!editor) return
     setSavingToDrive(true)
     try {
       let currentDraft = draft
       // If this is a new draft, save it to Supabase first
-      if (!currentDraft.id && user?.uid) {
+      if (!currentDraft?.id && user?.uid) {
         const newDraft = await createDraft({
           title,
           content: editor.getHTML(),
@@ -217,7 +201,7 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
       }
 
       // If this is an existing draft with a drive_file_id, check if it still exists
-      if (currentDraft.drive_file_id) {
+      if (currentDraft?.drive_file_id) {
         try {
           const response = await fetch('/api/drive/check', {
             method: 'POST',
@@ -260,6 +244,16 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
       if (!response.ok) {
         const data = await response.json()
         if (response.status === 401 && data.error === 'REAUTH_REQUIRED') {
+          // Store the current state for retry after authentication
+          const saveState = {
+            title,
+            content: editor.getHTML(),
+            draftId: currentDraft?.id,
+          }
+          localStorage.setItem('pendingDriveSave', JSON.stringify(saveState))
+          // Set a flag to trigger auto-save after authentication
+          sessionStorage.setItem('shouldAutoSaveToDrive', 'true')
+          
           // Not authenticated with Google or need to re-authenticate, redirect to Google OAuth
           const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
             `client_id=${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}` +
@@ -279,7 +273,7 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
       console.log('File saved to Google Drive:', file)
 
       // Update the draft with the Google Drive file ID
-      if (currentDraft.id) {
+      if (currentDraft?.id) {
         const updatedDraft = await updateDraft(currentDraft.id, {
           drive_file_id: file.id,
         })
@@ -287,7 +281,7 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
       }
 
       // Only redirect to dashboard for new files (check original draft.id)
-      if (!draft.id) {
+      if (!draft?.id) {
         router.push('/dashboard')
       }
     } catch (error) {
@@ -295,6 +289,50 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
       // You could show an error toast here
     } finally {
       setSavingToDrive(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-muted rounded w-1/4" />
+          <div className="h-4 bg-muted rounded w-1/2" />
+          <div className="h-[400px] bg-muted rounded" />
+        </div>
+      </div>
+    )
+  }
+
+  if (!editor || !draft) {
+    return null
+  }
+
+  const handleSave = async () => {
+    if (!user?.uid) return
+
+    setSaving(true)
+    try {
+      if (!draft.id) {
+        const newDraft = await createDraft({
+          title,
+          content: editor.getHTML(),
+          user_id: user.uid,
+        })
+        setDraft(newDraft)
+      } else {
+        // Update existing draft
+        const updatedDraft = await updateDraft(draft.id, {
+          title,
+          content: editor.getHTML(),
+        })
+        setDraft(updatedDraft)
+      }
+      router.push('/dashboard')
+    } catch (error) {
+      console.error('Error saving draft:', error)
+    } finally {
+      setSaving(false)
     }
   }
 

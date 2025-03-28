@@ -18,8 +18,23 @@ function GoogleCallbackContent() {
       try {
         const response = await fetch(`/api/auth/google?code=${code}`)
         if (response.ok) {
-          // Successfully authenticated with Google
-          router.push('/editor')
+          // Check if there's a pending save
+          const pendingSave = localStorage.getItem('pendingDriveSave')
+          if (pendingSave) {
+            try {
+              const saveState = JSON.parse(pendingSave)
+              // Clear the pending save immediately to prevent duplicate saves
+              localStorage.removeItem('pendingDriveSave')
+              // Redirect to the editor with the draft ID
+              router.push(`/editor/${saveState.draftId || 'new'}`)
+            } catch (error) {
+              console.error('Error processing pending save:', error)
+              router.push('/editor')
+            }
+          } else {
+            // Otherwise, go to dashboard
+            router.push('/dashboard')
+          }
         } else {
           throw new Error('Failed to authenticate with Google')
         }
