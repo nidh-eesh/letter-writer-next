@@ -21,8 +21,21 @@ async function refreshTokenIfNeeded(accessToken: string, refreshToken: string) {
     oauth2Client.setCredentials(credentials)
 
     return credentials.access_token
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error refreshing token:', error)
+    
+    // If the refresh token is invalid, we need to re-authenticate
+    if (error.message?.includes('invalid_grant') || error.message?.includes('invalid_token')) {
+      // Clear the tokens from cookies by making a request to the logout endpoint
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/auth/google/logout`, { 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      throw new Error('REAUTH_REQUIRED')
+    }
+    
     throw error
   }
 }

@@ -258,8 +258,9 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
       })
 
       if (!response.ok) {
-        if (response.status === 401) {
-          // Not authenticated with Google, redirect to Google OAuth
+        const data = await response.json()
+        if (response.status === 401 && data.error === 'REAUTH_REQUIRED') {
+          // Not authenticated with Google or need to re-authenticate, redirect to Google OAuth
           const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
             `client_id=${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}` +
             `&redirect_uri=${encodeURIComponent(`${process.env.NEXT_PUBLIC_APP_URL}/api/auth/google/callback`)}` +
