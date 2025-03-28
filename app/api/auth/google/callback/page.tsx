@@ -34,9 +34,9 @@ function GoogleCallbackContent() {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <div className="flex flex-col items-center justify-center gap-4">
-        <h1 className="text-2xl font-bold">Authenticating with Google...</h1>
-        <p className="text-muted-foreground">Please wait while we complete the process.</p>
+      <div className="flex flex-col items-center justify-center gap-3 sm:gap-4">
+        <h1 className="text-xl sm:text-2xl font-bold">Authenticating with Google...</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">Please wait while we complete the process.</p>
       </div>
     </div>
   )
@@ -46,9 +46,9 @@ export default function GoogleCallback() {
   return (
     <Suspense fallback={
       <div className="container mx-auto py-8 px-4">
-        <div className="flex flex-col items-center justify-center gap-4">
-          <h1 className="text-2xl font-bold">Loading...</h1>
-          <p className="text-muted-foreground">Please wait while we complete the process.</p>
+        <div className="flex flex-col items-center justify-center gap-3 sm:gap-4">
+          <h1 className="text-xl sm:text-2xl font-bold">Loading...</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Please wait while we complete the process.</p>
         </div>
       </div>
     }>

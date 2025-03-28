@@ -27,8 +27,8 @@ export default function LoginPage() {
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="max-w-md mx-auto">
-        <Card className="p-6">
-          <h1 className="text-2xl font-bold mb-6">Sign In</h1>
+        <Card className="p-4 sm:p-6">
+          <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Sign In</h1>
           <div className="space-y-4">
             {error && (
               <p className="text-sm text-red-500">{error}</p>

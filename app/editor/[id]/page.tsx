@@ -352,24 +352,25 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="flex flex-col gap-6">
+    <div className="container mx-auto py-4 sm:py-8 px-2 sm:px-4">
+      <div className="flex flex-col gap-4 sm:gap-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => router.push('/dashboard')}
+              className="shrink-0"
             >
               <ArrowLeft className="w-4 h-4" />
             </Button>
             {isTitleEditing ? (
-              <form onSubmit={handleTitleSubmit} className="flex items-center gap-2">
+              <form onSubmit={handleTitleSubmit} className="flex items-center gap-2 flex-1">
                 <Input
                   value={title}
                   onChange={handleTitleChange}
-                  className="h-9 w-[300px]"
+                  className="h-9 w-full sm:w-[300px]"
                   autoFocus
                 />
                 <Button type="submit" size="sm">Save</Button>
@@ -387,20 +388,21 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
               </form>
             ) : (
               <h1 
-                className="text-3xl font-bold cursor-pointer hover:opacity-80"
+                className="text-2xl sm:text-3xl font-bold cursor-pointer hover:opacity-80 truncate"
                 onClick={() => setIsTitleEditing(true)}
               >
                 {title}
               </h1>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {!draft.id && (
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={handleSave}
                 disabled={saving}
+                className="flex-1 sm:flex-none"
               >
                 <Save className="w-4 h-4 mr-2" />
                 {saving ? 'Saving...' : 'Save Draft'}
@@ -411,6 +413,7 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
                 size="sm" 
                 onClick={handleSaveToDrive}
                 disabled={savingToDrive}
+                className="flex-1 sm:flex-none"
               >
                 <Upload className="w-4 h-4 mr-2" />
                 {savingToDrive ? 'Saving to Drive...' : 'Save to Drive'}
@@ -421,6 +424,7 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
                 variant="destructive" 
                 size="sm"
                 onClick={() => setShowDeleteDialog(true)}
+                className="flex-1 sm:flex-none"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Delete
@@ -430,9 +434,9 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
         </div>
 
         {/* Main Editor */}
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           {/* Formatting Toolbar */}
-          <div className="flex flex-wrap gap-2 mb-4 p-2 border rounded-md">
+          <div className="flex flex-wrap gap-1 sm:gap-2 mb-4 p-2 border rounded-md overflow-x-auto">
             <Button 
               variant="ghost" 
               size="sm"
@@ -457,7 +461,7 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
             >
               <Underline className="w-4 h-4" />
             </Button>
-            <Separator orientation="vertical" className="h-6" />
+            <Separator orientation="vertical" className="h-6 hidden sm:block" />
             <Button 
               variant="ghost" 
               size="sm"
@@ -482,7 +486,7 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
             >
               <AlignRight className="w-4 h-4" />
             </Button>
-            <Separator orientation="vertical" className="h-6" />
+            <Separator orientation="vertical" className="h-6 hidden sm:block" />
             <Button 
               variant="ghost" 
               size="sm"
@@ -511,12 +515,14 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
             <Button 
               variant="outline" 
               onClick={() => router.push('/dashboard')}
+              className="flex-1 sm:flex-none"
             >
               Cancel
             </Button>
             <Button 
               onClick={handleSave}
               disabled={saving}
+              className="flex-1 sm:flex-none"
             >
               {saving ? 'Saving...' : 'Save & Close'}
             </Button>
@@ -525,7 +531,7 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-          <AlertDialogContent>
+          <AlertDialogContent className="mx-4 sm:mx-auto">
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Draft</AlertDialogTitle>
               <AlertDialogDescription>
